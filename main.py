@@ -8,13 +8,52 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 #Loading pricing data
+def load_price_data(n):
+    np.random.seed(42)
+    price = np.cumsum(np.random.randn(n)) + 100
+    return pd.DataFrame({'price': price})
 
-#Create features: momentum, rolling volatility
+#Extra features needed: momentum, rolling volatility
+def create_features(df, window = 10):
+    df['returns'] = df['price'].pct_change().fillna(0)
+    df['volatility'] = df['returns'].rolling(window).std().fillna(0)
+    return df
 
 #Generate buy sell hold labels
+def generate_labels(df):
+    conds = [df['returns'] > 0.01, df['returns'] < 0.01]
+    choices = [2,0] #0=sell, 1=hold, 2=buy
+    df['signal'] = np.select(conds, choices, default = 1)
+    return df
 
 #Train model
+MODEL_TYPE = 'LogisticRegression' #'RandomForest'
+def train_model(X,y,model_type= "MODEL_TYPE"):
+    if model_type == 'RandomForest':
+        model = LogisticRegression(multi_class='multinomial', max_iter=1000)
+    else:
+        model = RandomForestClassifier(n_estimators=100, random_state=42)
+    model.fit(X,y)
+    return model
 
 #Visualization
 
+
 #Main method: Load and process data, standardize features, train/test split, train model, predict on all data, plot
+if __name__ = '__main__':
+    df = load_price_data()
+    df = create_features(df)
+    df = generate_labels(df)
+    X = df[['returns', 'volatility']].values
+    y = df['signal'].values
+
+    scaler = StandardScaler
+    X_scaled = scaler.fit_transform(X)
+
+    #train test split
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_sized=0.2, random_state=42)
+    model = train_model(X_train, y_train)
+    y_pred = model.predict(X_scaled)
+
+    #plot and visualize
+    plot_signal_map(X_scaled, y_pred, model=model, mesh=True)
