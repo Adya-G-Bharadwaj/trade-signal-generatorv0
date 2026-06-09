@@ -28,32 +28,48 @@ def generate_labels(df):
 
 #Train model
 MODEL_TYPE = 'LogisticRegression' #'RandomForest'
-def train_model(X,y,model_type= "MODEL_TYPE"):
-    if model_type == 'RandomForest':
-        model = LogisticRegression(multi_class='multinomial', max_iter=1000)
-    else:
+def train_model(X,y,model_type= MODEL_TYPE):
+    if model_type == 'LogisticRegression':
+        model = LogisticRegression(max_iter=1000)
+    elif model_type == 'RandomForest':
         model = RandomForestClassifier(n_estimators=100, random_state=42)
+    else:
+        raise ValueError(
+            "must be RandForest or LogisticReg"
+        )
     model.fit(X,y)
     return model
 
 #Visualization
-
+COLORS = {0:'red', 1:'blue', 2:'green'}
+LABELS = {0:'Sell', 1:'Hold', 2:'Buy'}
+def plot_signal_map(X,y_pred):
+    plt.style.use('dark_background')
+    fig, ax = plt.subplots(figsize=(10,7))
+    for label in np.unique(y_pred):
+        idx = y_pred == label
+        ax.scatter(X[idx,0], X[idx,1], c=COLORS[label], label=LABELS[label], alpha=0.6, s=60)
+    ax.set_xlabel("Returns")
+    ax.set_ylabel("Volatility")
+    ax.set_title("Predicted Trading Signals")
+    ax.legend()
+    plt.show()
 
 #Main method: Load and process data, standardize features, train/test split, train model, predict on all data, plot
-if __name__ = '__main__':
-    df = load_price_data()
+if __name__ == '__main__':
+    df = load_price_data(1000)
     df = create_features(df)
     df = generate_labels(df)
-    X = df[['returns', 'volatility']].values
-    y = df['signal'].values
+    X = df[["returns", "volatility"]].values
+    y = df["signal"].values
 
-    scaler = StandardScaler
+    scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
     #train test split
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_sized=0.2, random_state=42)
-    model = train_model(X_train, y_train)
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42, stratify=y)
+    model = train_model(X_train, y_train, model_type=MODEL_TYPE)
     y_pred = model.predict(X_scaled)
 
     #plot and visualize
-    plot_signal_map(X_scaled, y_pred, model=model, mesh=True)
+    plot_signal_map(X_scaled, y_pred)
